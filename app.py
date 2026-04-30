@@ -82,12 +82,12 @@ supabase = create_client(
 
 def load_attendance():
     try:
-        response = supabase.table("attendance")\
-            .select("*")\
-            .order("created_at", desc=False)\
+        response = supabase.table("attendance") \
+            .select("*") \
+            .order("created_at", desc=False) \
             .execute()
 
-        people = response.data
+        people = response.data or []
 
         for p in people:
             if p.get("confidence", 0) <= 1:
@@ -96,231 +96,57 @@ def load_attendance():
         return people
 
     except Exception as e:
-        st.error(e)
+        st.error(f"Error cargando datos: {e}")
         return []
 
 people = load_attendance()
 
-# ── Header con logo incrustado ─────────────────────────────────────────────
-st.markdown(f"""
-<div class="uid-hero">
-    <img src="data:image/jpeg;base64,{LOGO_FULL_B64}" alt="UniformID">
-    <div class="uid-live">
-        <div class="uid-dot"></div>
-        Sistema activo
-    </div>
-</div>
+# ── HEADER ─────────────────────────────────────────────
+st.markdown("""
+<h1 style='text-align:center;'>👥 UniformID</h1>
+<p style='text-align:center;'>Sistema activo</p>
 """, unsafe_allow_html=True)
 
-# ── KPIs ───────────────────────────────────────────────────────────────────
-total    = len(people)
+# ── KPIs ───────────────────────────────────────────────
+total = len(people)
 avg_conf = round(sum(p["confidence"] for p in people) / total, 1) if total else 0
-last     = people[-1]["name"] if people else "—"
+last = people[-1]["name"] if people else "—"
 
-st.markdown(f"""
-<div class="kpi-grid">
-    <div class="kpi">
-        <div class="val">{total}</div>
-        <div class="lbl">Personas detectadas</div>
-    </div>
-    <div class="kpi green">
-        <div class="val">{avg_conf:.0f}%</div>
-        <div class="lbl">Confianza promedio</div>
-    </div>
-    <div class="kpi">
-        <div class="val small">{last}</div>
-        <div class="lbl">Último registrado</div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+col1, col2, col3 = st.columns(3)
 
-# ── Lista ──────────────────────────────────────────────────────────────────
-st.markdown('<p class="section-title">Registro de asistencia</p>', unsafe_allow_html=True)
+col1.metric("Personas detectadas", total)
+col2.metric("Confianza promedio", f"{avg_conf:.0f}%")
+col3.metric("Último registrado", last)
+
+st.markdown("---")
+
+# ── LISTA ──────────────────────────────────────────────
+st.subheader("Registro de asistencia")
 
 if not people:
-    st.markdown("""
-    <div class="empty-state">
-        Esperando detecciones de <code>main.py</code>…
-    </div>""", unsafe_allow_html=True)
+    st.info("Esperando datos desde el sistema...")
 else:
-    for i, p in enumerate(reversed(people), 1):
+    for p in reversed(people):
         conf = p["confidence"]
-        bar_color = "#5CB85C" if conf >= 80 else "#f3ba73" if conf >= 60 else "#f97d7d"
-        st.markdown(f"""
-        <div class="row">
-            <span class="row-num">{i}</span>
-            <span class="row-name">{p['name']}</span>
-            <span class="row-time">{p['time']}</span>
-            <div class="conf-bar-wrap">
-                <div class="conf-bar">
-                    <div class="conf-bar-fill" style="width:{conf}%;background:{bar_color};"></div>
-                </div>
-                <div class="conf-pct" style="color:{bar_color};">{conf:.0f}%</div>
-            </div>
-            <span class="badge">Presente</span>
-            {('<span class="badge" style="background:#fff8e1;color:#e65100;border-color:#ffe0b2;">⚠ Sin uniforme</span>' if not p.get('uniforme', True) else '')}
-        </div>""", unsafe_allow_html=True)
+        uniforme = "✅" if p.get("uniforme", True) else "⚠️ SIN uniforme"
 
+        st.write(
+            f"**{p['name']}** — {p['time']} — {conf:.0f}% — {uniforme}"
+        )
+
+    # Descargar CSV
     import pandas as pd
-    for p in people:
-        p.setdefault("uniforme", True)
-    df = pd.DataFrame(people)[["name","confidence","time","uniforme"]].copy()
+
+    df = pd.DataFrame(people)[["name", "confidence", "time", "uniforme"]]
     df["uniforme"] = df["uniforme"].map(lambda x: "Sí" if x else "No")
-    df.columns = ["Nombre","Confianza (%)","Hora","Uniforme"]
+
     st.download_button(
-        "Descargar lista",
+        "Descargar CSV",
         df.to_csv(index=False).encode("utf-8"),
         file_name=f"asistencia_{time.strftime('%Y%m%d_%H%M%S')}.csv",
         mime="text/csv",
     )
 
-# ── Personas registradas en el Dataset ────────────────────────────────────
-import glob, base64
-from config import DB_MATUTINO
-
-def load_dataset():
-    """
-    Retorna lista de dicts {nombre, fotos:[rutas]} para cada subcarpeta del DB.
-    Soporta jpg, jpeg y png.
-    """
-    if not os.path.isdir(DB_MATUTINO):
-        return []
-    personas = []
-    for carpeta in sorted(os.listdir(DB_MATUTINO)):
-        ruta = os.path.join(DB_MATUTINO, carpeta)
-        if not os.path.isdir(ruta):
-            continue
-        fotos = sorted(
-            glob.glob(os.path.join(ruta, "*.jpg")) +
-            glob.glob(os.path.join(ruta, "*.jpeg")) +
-            glob.glob(os.path.join(ruta, "*.png"))
-        )
-        if fotos:
-            personas.append({"nombre": carpeta, "fotos": fotos})
-    return personas
-
-dataset = load_dataset()
-
-st.markdown('<p class="section-title">Personas registradas</p>', unsafe_allow_html=True)
-
-if "mostrar_dataset" not in st.session_state:
-    st.session_state.mostrar_dataset = False
-
-if st.button("Base de datos", key="btn_dataset"):
-    st.session_state.mostrar_dataset = not st.session_state.mostrar_dataset
-
-if st.session_state.mostrar_dataset:
-    if not dataset:
-        st.markdown("""
-        <div class="empty-state">
-            <span>👤</span>
-            No se encontraron personas en el Dataset.<br>
-            <small>Verifica la ruta <code>DB_MATUTINO</code> en <code>config.py</code></small>
-        </div>""", unsafe_allow_html=True)
-    else:
-        st.markdown(f"""
-        <div style="font-size:.8rem;color:var(--muted);margin-bottom:.8rem;">
-            {len(dataset)} persona{'s' if len(dataset)!=1 else ''} registrada{'s' if len(dataset)!=1 else ''}
-            &nbsp;·&nbsp;
-            {sum(len(p['fotos']) for p in dataset)} foto{'s' if sum(len(p['fotos']) for p in dataset)!=1 else ''} en total
-        </div>""", unsafe_allow_html=True)
-
-        cols = st.columns(4)
-        for idx, persona in enumerate(dataset):
-            with cols[idx % 4]:
-                try:
-                    with open(persona["fotos"][0], "rb") as f:
-                        b64 = base64.b64encode(f.read()).decode()
-                    ext = persona["fotos"][0].rsplit(".", 1)[-1].lower()
-                    mime = "image/png" if ext == "png" else "image/jpeg"
-                    st.markdown(f"""
-                    <div style="background:var(--white);border:1px solid var(--border);
-                         border-top:3px solid var(--blue);border-radius:3px;
-                         padding:.65rem;margin-bottom:.7rem;text-align:center;">
-                        <img src="data:{mime};base64,{b64}"
-                             style="width:100%;border-radius:2px;object-fit:cover;
-                                    max-height:130px;">
-                        <div style="font-size:.8rem;font-weight:700;color:var(--navy);
-                             margin-top:.45rem;white-space:nowrap;overflow:hidden;
-                             text-overflow:ellipsis;">{persona['nombre']}</div>
-                        <div style="font-size:.65rem;color:var(--muted);
-                             letter-spacing:.5px;">{len(persona['fotos'])} foto{'s' if len(persona['fotos'])!=1 else ''}</div>
-                    </div>""", unsafe_allow_html=True)
-                except Exception:
-                    pass
-
-
-
-CAPTURE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "unknown_captures")
-
-def load_captures(n=12):
-    """Retorna las N capturas más recientes como lista de (ruta, nombre)."""
-    if not os.path.isdir(CAPTURE_DIR):
-        return []
-    files = sorted(
-        glob.glob(os.path.join(CAPTURE_DIR, "*.jpg")),
-        key=os.path.getmtime,
-        reverse=True,
-    )
-    return files[:n]
-
-captures = load_captures()
-
-st.markdown('<p class="section-title">Capturas de desconocidos</p>', unsafe_allow_html=True)
-
-if not captures:
-    st.markdown("""
-    <div class="empty-state">
-        Sin capturas de desconocidos aún.
-    </div>""", unsafe_allow_html=True)
-else:
-    # Mostrar en grid de 4 columnas
-    cols = st.columns(4)
-    for idx, fpath in enumerate(captures):
-        with cols[idx % 4]:
-            try:
-                with open(fpath, "rb") as f:
-                    b64 = base64.b64encode(f.read()).decode()
-                fname = os.path.basename(fpath)
-                # Extraer timestamp del nombre  20260319_143022_desconocido.jpg
-                partes = fname.replace(".jpg", "").split("_")
-                hora = f"{partes[1][:2]}:{partes[1][2:4]}:{partes[1][4:6]}" if len(partes) > 1 else ""
-                motivo = "_".join(partes[2:]).replace("_", " ").capitalize() if len(partes) > 2 else ""
-                st.markdown(f"""
-                <div style="background:var(--white);border:1px solid var(--border);
-                     border-top:3px solid #f97d7d;border-radius:3px;
-                     padding:.6rem;margin-bottom:.7rem;text-align:center;">
-                    <img src="data:image/jpeg;base64,{b64}"
-                         style="width:100%;border-radius:2px;object-fit:cover;max-height:140px;">
-                    <div style="font-size:.68rem;color:var(--muted);margin-top:.4rem;
-                         letter-spacing:.5px;">{hora}</div>
-                    <div style="font-size:.65rem;font-weight:700;color:#e05555;
-                         text-transform:uppercase;letter-spacing:.8px;">{motivo}</div>
-                </div>""", unsafe_allow_html=True)
-            except Exception:
-                pass
-
-# ── Controles ──────────────────────────────────────────────────────────────
-st.markdown("---")
-col1, col2, col3 = st.columns([1, 1, 3])
-
-with col1:
-    if st.button("Limpiar lista de asistencia", disabled=not bool(people), key="btn_limpiar"):
-        if os.path.exists(ATTENDANCE_FILE):
-            os.remove(ATTENDANCE_FILE)
-        st.rerun()
-
-with col2:
-    if st.button("Limpiar capturas", disabled=not bool(captures), key="btn_cap"):
-        for f in glob.glob(os.path.join(CAPTURE_DIR, "*.jpg")):
-            try:
-                os.remove(f)
-            except Exception:
-                pass
-        st.rerun()
-
-with col3:
-    pass
-
+# ── AUTO REFRESH ───────────────────────────────────────
 time.sleep(2)
 st.rerun()
