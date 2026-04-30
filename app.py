@@ -96,11 +96,11 @@ def load_attendance():
 
         return people
 
-    people = load_attendance()
-
     except Exception as e:
         st.error(e)
         return []
+
+people = load_attendance()
 
 # ── Header con logo incrustado ─────────────────────────────────────────────
 st.markdown(f"""
