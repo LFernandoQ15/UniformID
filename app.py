@@ -1,8 +1,3 @@
-"""
-app.py  — Streamlit dashboard de asistencia · UniformID
-Logos incrustados como base64 — no dependen de archivos externos.
-Ejecutar:  streamlit run app.py
-"""
 import json, os, time
 from supabase import create_client
 import streamlit as st
