@@ -4,4 +4,4 @@ deepface
 streamlit
 numpy
 supabase
-
+pandas
