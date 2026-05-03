@@ -87,8 +87,20 @@ html,body,[class*="css"]{{font-family:'Barlow',sans-serif;background:var(--light
 .badge{{font-size:.65rem;font-weight:700;padding:3px 10px;border-radius:2px;
     background:#e8f5e9;color:var(--green);border:1px solid #c8e6c9;
     letter-spacing:.8px;text-transform:uppercase;}}
+.badge-entrada{{font-size:.65rem;font-weight:700;padding:3px 10px;border-radius:2px;
+    background:#e3f2fd;color:#1565C0;border:1px solid #90CAF9;
+    letter-spacing:.8px;text-transform:uppercase;}}
+.badge-salida{{font-size:.65rem;font-weight:700;padding:3px 10px;border-radius:2px;
+    background:#fff3e0;color:#E65100;border:1px solid #FFCC80;
+    letter-spacing:.8px;text-transform:uppercase;}}
+.badge-nouni{{font-size:.65rem;font-weight:700;padding:3px 10px;border-radius:2px;
+    background:#fff8e1;color:#F57F17;border:1px solid #FFE082;
+    letter-spacing:.8px;text-transform:uppercase;}}
 .alert-box{{background:#ffecec;color:#d32f2f;padding:.75rem 1.2rem;
     border-radius:3px;border-left:4px solid #d32f2f;font-weight:700;
+    margin-bottom:.8rem;font-size:.88rem;}}
+.alert-warn{{background:#fff8e1;color:#E65100;padding:.75rem 1.2rem;
+    border-radius:3px;border-left:4px solid #FFB300;font-weight:700;
     margin-bottom:.8rem;font-size:.88rem;}}
 
 /* ── Empty state ── */
@@ -132,15 +144,25 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ── KPIs ───────────────────────────────────────────────────────────────────
-total    = len(people)
-avg_conf = round(sum(p["confidence"] for p in people) / total, 1) if total else 0
-last     = people[-1]["name"] if people else "—"
+total      = len(people)
+avg_conf   = round(sum(p["confidence"] for p in people) / total, 1) if total else 0
+last       = people[-1]["name"] if people else "—"
+entradas   = sum(1 for p in people if p.get("tipo") == "entrada")
+salidas    = sum(1 for p in people if p.get("tipo") == "salida")
 
 st.markdown(f"""
 <div class="kpi-grid">
     <div class="kpi">
         <div class="val">{total}</div>
-        <div class="lbl">Asistencia registrada</div>
+        <div class="lbl">Registros totales</div>
+    </div>
+    <div class="kpi" style="border-top-color:#1565C0;">
+        <div class="val" style="color:#1565C0;">{entradas}</div>
+        <div class="lbl">Entradas hoy</div>
+    </div>
+    <div class="kpi" style="border-top-color:#E65100;">
+        <div class="val" style="color:#E65100;">{salidas}</div>
+        <div class="lbl">Salidas hoy</div>
     </div>
     <div class="kpi green">
         <div class="val">{avg_conf:.0f}%</div>
@@ -153,12 +175,23 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ── ALERTA DESCONOCIDO ─────────────────────────────────────────────────────
-unknowns = [p for p in people if p.get("name") == "Desconocido"]
+# ── ALERTAS ────────────────────────────────────────────────────────────────
+unknowns  = [p for p in people if p.get("name") == "Desconocido"]
+sin_uni   = [p for p in people if not p.get("uniforme", True) and p.get("name") != "Desconocido"]
+
 if unknowns:
+    recientes = ", ".join(p["time"] for p in unknowns[-3:])
     st.markdown(f"""
     <div class="alert-box">
-        ⚠ {len(unknowns)} persona(s) desconocida(s) detectada(s)
+        🚨 {len(unknowns)} persona(s) <b>DESCONOCIDA(S)</b> detectada(s) — últimas: {recientes}
+    </div>
+    """, unsafe_allow_html=True)
+
+if sin_uni:
+    nombres_su = ", ".join(dict.fromkeys(p["name"] for p in sin_uni[-5:]))
+    st.markdown(f"""
+    <div class="alert-warn">
+        ⚠ {len(sin_uni)} detección(es) <b>SIN UNIFORME</b> — {nombres_su}
     </div>
     """, unsafe_allow_html=True)
 
@@ -173,12 +206,17 @@ if not people:
     </div>""", unsafe_allow_html=True)
 else:
     for i, p in enumerate(reversed(people), 1):
-        conf = p["confidence"]
+        conf      = p["confidence"]
         bar_color = "#5CB85C" if conf >= 80 else "#f3ba73" if conf >= 60 else "#f97d7d"
-        uniforme  = "✔ Uniforme" if p.get("uniforme", True) else "⚠ Sin uniforme"
+        con_uni   = p.get("uniforme", True)
+        uni_badge = '<span class="badge">✔ Uniforme</span>' if con_uni else '<span class="badge-nouni">⚠ Sin uniforme</span>'
+        tipo      = p.get("tipo", "")
+        tipo_badge = f'<span class="badge-entrada">↓ Entrada</span>' if tipo == "entrada" else f'<span class="badge-salida">↑ Salida</span>' if tipo == "salida" else ""
+        # highlight row border for unknown or no uniform
+        row_border = "#d32f2f" if p.get("name") == "Desconocido" else ("#FFB300" if not con_uni else "var(--green)")
 
         st.markdown(f"""
-        <div class="row">
+        <div class="row" style="border-left-color:{row_border};">
             <span class="row-num">{i}</span>
             <span class="row-name">{p['name']}</span>
             <span class="row-time">{p['time']}</span>
@@ -188,7 +226,8 @@ else:
                 </div>
                 <div class="conf-pct" style="color:{bar_color};">{conf:.0f}%</div>
             </div>
-            <span class="badge">{uniforme}</span>
+            {tipo_badge}
+            {uni_badge}
         </div>""", unsafe_allow_html=True)
 
 # ── FOOTER ─────────────────────────────────────────────────────────────────
