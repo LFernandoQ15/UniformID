@@ -1,3 +1,4 @@
+
 import time
 import threading
 import os
@@ -11,35 +12,52 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 _registry = {}
 _lock = threading.Lock()
 
+COOLDOWN_SEG = 10  # tiempo mínimo entre registros por persona
+
 
 def add_person(name: str, confidence: float, uniforme: bool = True) -> bool:
     with _lock:
-        if name in _registry:
+        ahora = time.time()
+
+        # ── Evitar rebotes (detecciones consecutivas) ───────────────────────
+        if name in _registry and ahora - _registry[name] < COOLDOWN_SEG:
             return False
 
-        data = {
-            "name": name,
-            "confidence": round(confidence, 1),
-            "time": time.strftime("%H:%M:%S"),
-            "date": time.strftime("%Y-%m-%d"),
-            "uniforme": uniforme,
-        }
+        fecha = time.strftime("%Y-%m-%d")
+        hora  = time.strftime("%H:%M:%S")
 
         try:
-            # Evitar duplicados en base de datos
-            existing = supabase.table("attendance")\
-                .select("id")\
+            # ── Obtener último registro ────────────────────────────────────
+            ultimo = supabase.table("attendance")\
+                .select("tipo, time")\
                 .eq("name", name)\
-                .eq("date", data["date"])\
+                .order("id", desc=True)\
+                .limit(1)\
                 .execute()
 
-            if existing.data:
-                return False
+            # ── Determinar tipo (entrada/salida) ───────────────────────────
+            if not ultimo.data:
+                tipo = "entrada"
+            else:
+                tipo = "salida" if ultimo.data[0]["tipo"] == "entrada" else "entrada"
 
+            # ── Construir registro ─────────────────────────────────────────
+            data = {
+                "name": name,
+                "confidence": round(confidence, 1),
+                "time": hora,
+                "date": fecha,
+                "uniforme": uniforme,
+                "tipo": tipo,
+            }
+
+            # ── Insertar en Supabase ───────────────────────────────────────
             supabase.table("attendance").insert(data).execute()
-            _registry[name] = data
 
-            print(f"[ATTENDANCE] Registrado: {name}")
+            # ── Actualizar registro local ──────────────────────────────────
+            _registry[name] = ahora
+
+            print(f"[ATTENDANCE] {tipo.upper()}: {name}")
             return True
 
         except Exception as e:
