@@ -183,7 +183,7 @@ if unknowns:
     recientes = ", ".join(p["time"] for p in unknowns[-3:])
     st.markdown(f"""
     <div class="alert-box">
-        🚨 {len(unknowns)} persona(s) <b>DESCONOCIDA(S)</b> detectada(s) — últimas: {recientes}
+          {len(unknowns)} persona(s) <b>DESCONOCIDA(S)</b> detectada(s) — últimas: {recientes}
     </div>
     """, unsafe_allow_html=True)
 
@@ -191,7 +191,7 @@ if sin_uni:
     nombres_su = ", ".join(dict.fromkeys(p["name"] for p in sin_uni[-5:]))
     st.markdown(f"""
     <div class="alert-warn">
-        ⚠ {len(sin_uni)} detección(es) <b>SIN UNIFORME</b> — {nombres_su}
+          {len(sin_uni)} detección(es) <b>SIN UNIFORME</b> — {nombres_su}
     </div>
     """, unsafe_allow_html=True)
 
