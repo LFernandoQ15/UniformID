@@ -186,7 +186,7 @@ if unknowns:
     recientes = ", ".join(p["time"] for p in unknowns[-3:])
     st.markdown(f"""
     <div class="alert-box">
-        🚨 {len(unknowns)} persona(s) <b>DESCONOCIDA(S)</b> detectada(s) — últimas: {recientes}
+          {len(unknowns)} persona(s) <b>DESCONOCIDA(S)</b> detectada(s) — últimas: {recientes}
     </div>
     """, unsafe_allow_html=True)
 
@@ -194,7 +194,7 @@ if sin_uni:
     nombres_su = ", ".join(dict.fromkeys(p["name"] for p in sin_uni[-5:]))
     st.markdown(f"""
     <div class="alert-warn">
-        ⚠ {len(sin_uni)} detección(es) <b>SIN UNIFORME</b> — {nombres_su}
+          {len(sin_uni)} detección(es) <b>SIN UNIFORME</b> — {nombres_su}
     </div>
     """, unsafe_allow_html=True)
 
@@ -204,7 +204,7 @@ st.markdown('<p class="section-title">Registro en tiempo real</p>', unsafe_allow
 if not people:
     st.markdown("""
     <div class="empty-state">
-        <span>📡</span>
+        <span>...</span>
         Esperando detecciones desde el sistema de cámara…
     </div>""", unsafe_allow_html=True)
 else:
@@ -247,7 +247,7 @@ if people:
 
     st.markdown("---")
     st.download_button(
-        label="⬇ Descargar registros CSV (Excel)",
+        label="Descargar registros",
         data=csv_bytes,
         file_name=f"uniformid_{time.strftime('%Y-%m-%d')}.csv",
         mime="text/csv",
@@ -256,7 +256,7 @@ if people:
 
 # ── FOOTER ─────────────────────────────────────────────────────────────────
 st.markdown("---")
-st.caption("UniformID · Sistema de control de acceso · v2.0")
+st.caption("UniformID · Sistema de control de acceso · v1.0")
 
 # ── REFRESH ────────────────────────────────────────────────────────────────
 time.sleep(2)
