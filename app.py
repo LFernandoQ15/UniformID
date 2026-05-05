@@ -56,9 +56,10 @@ html,body,[class*="css"]{{font-family:'Barlow',sans-serif;background:var(--light
 @keyframes blink{{0%,100%{{opacity:1;}}50%{{opacity:.15;}}}}
 
 /* ── KPIs ── */
-.kpi-grid{{display:flex;gap:1rem;margin-bottom:1.4rem;}}
-.kpi{{flex:1;background:var(--white);border:1px solid var(--border);
-    border-top:3px solid var(--blue);border-radius:3px;padding:1.1rem 1.4rem;text-align:center;}}
+.kpi-grid{{display:flex;flex-wrap:wrap;gap:.75rem;margin-bottom:1.4rem;}}
+.kpi{{flex:1 1 calc(33% - .75rem);min-width:120px;background:var(--white);border:1px solid var(--border);
+    border-top:3px solid var(--blue);border-radius:3px;padding:.9rem 1rem;text-align:center;}}
+
 .kpi.green{{border-top-color:var(--green);}}
 .kpi .val{{font-family:'Barlow Condensed',sans-serif;font-size:2.8rem;font-weight:800;
     color:var(--navy);line-height:1.05;}}
@@ -72,13 +73,15 @@ html,body,[class*="css"]{{font-family:'Barlow',sans-serif;background:var(--light
 .section-title::after{{content:'';flex:1;height:1px;background:var(--border);}}
 
 /* ── Rows ── */
-.row{{display:flex;align-items:center;gap:1rem;background:var(--white);
+.row{{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .75rem;background:var(--white);
     border:1px solid var(--border);border-left:4px solid var(--green);
-    border-radius:3px;padding:.72rem 1.2rem;margin-bottom:.45rem;
+    border-radius:3px;padding:.72rem 1rem;margin-bottom:.45rem;
     animation:slideIn .25s ease;}}
+.row-top{{display:flex;align-items:center;gap:.5rem .75rem;width:100%;}}
+.row-badges{{display:flex;gap:.4rem;flex-wrap:wrap;width:100%;padding-left:36px;}}
 @keyframes slideIn{{from{{opacity:0;transform:translateY(-5px);}}to{{opacity:1;transform:translateY(0);}}}}
 .row-num{{font-size:1rem;color:var(--muted);min-width:26px;text-align:right;font-weight:700;}}
-.row-name{{font-weight:700;font-size:.97rem;color:var(--navy);flex:1;}}
+.row-name{{font-weight:700;font-size:.97rem;color:var(--navy);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}}
 .row-time{{font-size:.78rem;color:var(--muted);min-width:70px;}}
 .conf-bar-wrap{{width:88px;}}
 .conf-bar{{height:5px;border-radius:2px;background:#dde4f0;overflow:hidden;}}
@@ -183,7 +186,7 @@ if unknowns:
     recientes = ", ".join(p["time"] for p in unknowns[-3:])
     st.markdown(f"""
     <div class="alert-box">
-          {len(unknowns)} persona(s) <b>DESCONOCIDA(S)</b> detectada(s) — últimas: {recientes}
+        🚨 {len(unknowns)} persona(s) <b>DESCONOCIDA(S)</b> detectada(s) — últimas: {recientes}
     </div>
     """, unsafe_allow_html=True)
 
@@ -191,7 +194,7 @@ if sin_uni:
     nombres_su = ", ".join(dict.fromkeys(p["name"] for p in sin_uni[-5:]))
     st.markdown(f"""
     <div class="alert-warn">
-          {len(sin_uni)} detección(es) <b>SIN UNIFORME</b> — {nombres_su}
+        ⚠ {len(sin_uni)} detección(es) <b>SIN UNIFORME</b> — {nombres_su}
     </div>
     """, unsafe_allow_html=True)
 
@@ -217,17 +220,18 @@ else:
 
         st.markdown(f"""
         <div class="row" style="border-left-color:{row_border};">
-            <span class="row-num">{i}</span>
-            <span class="row-name">{p['name']}</span>
-            <span class="row-time">{p['time']}</span>
-            <div class="conf-bar-wrap">
-                <div class="conf-bar">
-                    <div class="conf-bar-fill" style="width:{conf:.0f}%;background:{bar_color};"></div>
+            <div class="row-top">
+                <span class="row-num">{i}</span>
+                <span class="row-name">{p['name']}</span>
+                <span class="row-time">{p['time']}</span>
+                <div class="conf-bar-wrap">
+                    <div class="conf-bar">
+                        <div class="conf-bar-fill" style="width:{conf:.0f}%;background:{bar_color};"></div>
+                    </div>
+                    <div class="conf-pct" style="color:{bar_color};">{conf:.0f}%</div>
                 </div>
-                <div class="conf-pct" style="color:{bar_color};">{conf:.0f}%</div>
             </div>
-            {tipo_badge}
-            {uni_badge}
+            <div class="row-badges">{tipo_badge}{uni_badge}</div>
         </div>""", unsafe_allow_html=True)
 
 # ── FOOTER ─────────────────────────────────────────────────────────────────
@@ -237,4 +241,3 @@ st.caption("UniformID · Sistema de control de acceso · v2.0")
 # ── REFRESH ────────────────────────────────────────────────────────────────
 time.sleep(2)
 st.rerun()
-
