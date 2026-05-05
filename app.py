@@ -234,6 +234,26 @@ else:
             <div class="row-badges">{tipo_badge}{uni_badge}</div>
         </div>""", unsafe_allow_html=True)
 
+# ── DESCARGA CSV ───────────────────────────────────────────────────────────
+if people:
+    import csv, io as _io
+
+    campos = ["name", "time", "date", "confidence", "uniforme", "tipo"]
+    buf = _io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=campos, extrasaction="ignore")
+    writer.writeheader()
+    writer.writerows(people)
+    csv_bytes = buf.getvalue().encode("utf-8-sig")  # utf-8-sig para Excel
+
+    st.markdown("---")
+    st.download_button(
+        label="⬇ Descargar registros CSV (Excel)",
+        data=csv_bytes,
+        file_name=f"uniformid_{time.strftime('%Y-%m-%d')}.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
+
 # ── FOOTER ─────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.caption("UniformID · Sistema de control de acceso · v2.0")
